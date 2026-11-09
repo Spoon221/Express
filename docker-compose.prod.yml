@@ -1,0 +1,37 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: todo_students
+      POSTGRES_USER: todo_app
+      POSTGRES_PASSWORD: change_me
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - todo_postgres_data:/var/lib/postgresql/data
+      - ./db/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U todo_app -d todo_students"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  todo-api:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgresql://todo_app:change_me@postgres:5432/todo_students
+      PORT: 3000
+      NODE_ENV: production
+      CORS_ORIGIN: https://todo.simakov.space,https://helios.cs.ifmo.ru,https://se.ifmo.ru
+    ports:
+      - "127.0.0.1:3000:3000"
+
+volumes:
+  todo_postgres_data:
